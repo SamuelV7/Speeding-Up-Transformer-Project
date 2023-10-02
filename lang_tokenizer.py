@@ -11,7 +11,7 @@ def custom_tokenizer(text_location='tiny-shakespeare.txt'):
     itos = { i:char for i,char in enumerate(chars) }
 
     # encode and decode
-    encode = lambda x: [stoi[ch] for ch in x]
+    encode = lambda x: [stoi[char] for char in x]
     decode = lambda x: ''.join([itos[i] for i in x])
 
     return encode, decode, vocab_size

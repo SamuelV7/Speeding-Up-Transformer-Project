@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import params
 import math
-
+import lang_tokenizer as lt
 
 class Head(nn.Module):
     def __init__(self, head_size) -> None:
@@ -66,7 +66,7 @@ class TransformerDecoderBlock(nn.Module):
 
     def forward(self, x):
         # residual connection
-        print(x.shape)
+        # print(x.shape)
         x = x + self.self_attenion(self.norm1(x))
         x = x + self.ff(self.norm2(x))
         return x
@@ -82,8 +82,9 @@ class Shakespeare(nn.Module):
         self.out = nn.Linear(params.n_embeddings, params.vocab_size)
 
     def forward(self, x, targets=None):
+        T, C = x.shape
         tok_emb = self.token_embedding(x)
-        pos_emb = self.pos_embedding(torch.arange(params.block_size, device=params.device))
+        pos_emb = self.pos_embedding(torch.arange(T, device=params.device))
         x = tok_emb + pos_emb
         x = self.tdb(x)
         logits = self.out(self.ln1(x)) # gives logits
@@ -98,13 +99,33 @@ class Shakespeare(nn.Module):
         
         return logits, loss
     
-    def generate(self, x, max_output=100, temperature=1.0):
-        for i in range(max_output):
-            # crop till context
-            x = x[:, -params.block_size:]
-            logits, _ = self(x)
-            logits = logits[:, -1, :] 
-            next_token = torch.multinomial(torch.softmax(logits, dim=-1), num_samples=1)
-            x = torch.cat([x, next_token], dim=-1)
-        return x
+    # def generate(self, x, max_output=100, temperature=1.0):
+    #     for i in range(max_output):
+    #         # crop till context
+    #         x_cur = x[:, -params.block_size:]
+    #         print("x shape crop: ", x.shape)
+    #         logits, _ = self(x_cur)
+    #         logits = logits[:, -1, :] 
+    #         next_token = torch.multinomial(torch.softmax(logits, dim=-1), num_samples=1)
+    #         x = torch.cat((x, next_token), dim=-1)
+    #         print("next token: ", next_token)
+    #         # print("next token: ", lt.decode(next_token))
+    #     return x
+    def generate(self, idx, max_new_tokens):
+        # idx is (B, T) array of indices in the current context
+        for _ in range(max_new_tokens):
+            # crop idx to the last block_size tokens
+            idx_cond = idx[:, -params.block_size:]
+            # get the predictions
+            logits, loss = self(idx_cond)
+            # focus only on the last time step
+            logits = logits[:, -1, :] # becomes (B, C)
+            # apply softmax to get probabilities
+            probs = torch.nn.functional.softmax(logits, dim=-1) # (B, C)
+            # sample from the distribution
+            idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
+            # append sampled index to the running sequence
+            idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
+        return idx
+
 
