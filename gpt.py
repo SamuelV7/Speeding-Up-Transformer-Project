@@ -8,9 +8,9 @@ class Head(nn.Module):
     def __init__(self, head_size) -> None:
         super().__init__()
         # query, key, value
-        self.ql = nn.Linear(head_size, bias=False)
-        self.kl = nn.Linear(head_size, bias=False)
-        self.vl = nn.Linear(head_size, bias=False)
+        self.ql = nn.Linear(params.n_embeddings, head_size, bias=False)
+        self.kl = nn.Linear(params.n_embeddings, head_size, bias=False)
+        self.vl = nn.Linear(params.n_embeddings, head_size, bias=False)
         self.register_buffer("mask", torch.tril(torch.ones(params.block_size,  params.block_size)))
         self.dropout = nn.Dropout(params.dropout)
 
@@ -22,7 +22,7 @@ class Head(nn.Module):
         weights = q @ k.transpose(-1, -2) * (1.0 / math.sqrt(C))
         weights = weights.masked_fill(self.mask[:T, :T] == 0, float('-inf'))
         weights = torch.nn.functional.softmax(weights, dim=-1)
-        weights = self.dropout(params.dropout)
+        weights = self.dropout(weights)
         v = self.vl(x)
         out = weights @ v
         return out
@@ -31,22 +31,24 @@ class MultiHeadAttention(nn.Module):
     def __init__(self, head_size, num_heads) -> None:
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
-        self.fc = nn.Linear(head_size * num_heads, head_size)
+        self.fc = nn.Linear(head_size * num_heads, params.n_embeddings)
         self.dropout = nn.Dropout(params.dropout)
     
     def forward(self, x):
         out = torch.cat([h(x) for h in self.heads], dim=-1)
+        # print("Attention shape1 ", out.shape)
         out = self.fc(out)
         out = self.dropout(out)
+        # print("Attention shape ", out.shape)
         return out
         
 class FeedForward(nn.Module):
-    def __init__(self, d_model) -> None:
+    def __init__(self, n_embeddings) -> None:
         super().__init__()
         self.the_net = nn.Sequential(
-            nn.Linear(params.d_model, params.d_model * 4),
+            nn.Linear(n_embeddings, n_embeddings * 4),
             nn.GELU(),
-            nn.Linear(params.d_model * 4, params.d_model),
+            nn.Linear(n_embeddings * 4, n_embeddings),
             nn.Dropout(params.dropout)
         )
     
@@ -54,16 +56,17 @@ class FeedForward(nn.Module):
         return self.the_net(x)
     
 class TransformerDecoderBlock(nn.Module):
-    def __init__(self, ) -> None:
+    def __init__(self,n_embed, n_head) -> None:
         super().__init__()
-        head_size = params.d_model // params.nhead
-        self.self_attenion = MultiHeadAttention(head_size, params.nhead)
-        self.norm1 = nn.LayerNorm(params.d_model)
-        self.norm2 = nn.LayerNorm(params.d_model)
-        self.ff = FeedForward(d_model=params.d_model)
+        head_size = n_embed // n_head
+        self.self_attenion = MultiHeadAttention(head_size, n_head)
+        self.norm1 = nn.LayerNorm(n_embed)
+        self.norm2 = nn.LayerNorm(n_embed)
+        self.ff = FeedForward(n_embeddings=n_embed)
 
     def forward(self, x):
         # residual connection
+        print(x.shape)
         x = x + self.self_attenion(self.norm1(x))
         x = x + self.ff(self.norm2(x))
         return x
@@ -72,11 +75,11 @@ class TransformerDecoderBlock(nn.Module):
 class Shakespeare(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.token_embedding = nn.Embedding(params.vocab_size, params.d_model)
-        self.pos_embedding = nn.Embedding(params.block_size, params.d_model)
-        self.tdb = nn.Sequential(*[TransformerDecoderBlock() for _ in range(params.num_decoder_layers)])
-        self.ln1 = nn.LayerNorm(params.d_model)
-        self.out = nn.Linear(params.d_model, params.vocab_size)
+        self.token_embedding = nn.Embedding(params.vocab_size, params.n_embeddings)
+        self.pos_embedding = nn.Embedding(params.block_size, params.n_embeddings)
+        self.tdb = nn.Sequential(*[TransformerDecoderBlock(params.n_embeddings, params.nhead) for _ in range(params.num_decoder_layers)])
+        self.ln1 = nn.LayerNorm(params.n_embeddings)
+        self.out = nn.Linear(params.n_embeddings, params.vocab_size)
 
     def forward(self, x, targets=None):
         tok_emb = self.token_embedding(x)
