@@ -19,7 +19,7 @@ class Head(nn.Module):
         k = self.kl(x)
         q = self.ql(x)
         
-        weights = q @ k.transpose(-1, -2) * (1.0 / math.sqrt(C))
+        weights = q @ k.transpose(-1, -2) * k.shape[-1]**-0.5
         weights = weights.masked_fill(self.mask[:T, :T] == 0, float('-inf'))
         weights = torch.nn.functional.softmax(weights, dim=-1)
         weights = self.dropout(weights)
@@ -47,7 +47,7 @@ class FeedForward(nn.Module):
         super().__init__()
         self.the_net = nn.Sequential(
             nn.Linear(n_embeddings, n_embeddings * 4),
-            nn.GELU(),
+            nn.ReLU(),
             nn.Linear(n_embeddings * 4, n_embeddings),
             nn.Dropout(params.dropout)
         )
@@ -80,9 +80,18 @@ class Shakespeare(nn.Module):
         self.tdb = nn.Sequential(*[TransformerDecoderBlock(params.n_embeddings, params.nhead) for _ in range(params.num_decoder_layers)])
         self.ln1 = nn.LayerNorm(params.n_embeddings)
         self.out = nn.Linear(params.n_embeddings, params.vocab_size)
+        self.apply(self._init_weights)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, x, targets=None):
-        T, C = x.shape
+        B, T = x.shape
         tok_emb = self.token_embedding(x)
         pos_emb = self.pos_embedding(torch.arange(T, device=params.device))
         x = tok_emb + pos_emb
@@ -92,10 +101,10 @@ class Shakespeare(nn.Module):
         if targets is None:
             loss = None
         else:
-            B, T, C = x.shape
-            x = x.view(B*T, C)
+            B, T, C = logits.shape
+            logits = logits.view(B*T, C)
             targets = targets.view(B*T)
-            loss = torch.nn.functional.cross_entropy(x, targets)
+            loss = torch.nn.functional.cross_entropy(logits, targets)
         
         return logits, loss
     

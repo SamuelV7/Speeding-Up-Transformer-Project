@@ -9,8 +9,7 @@ with open("tiny-shakespeare.txt", "r") as f:
 
 model = gpt.Shakespeare()
 model = model.to(params.device)
-encoder = lt.encode
-data = torch.tensor(encoder(text), device=params.device)
+data = torch.tensor(lt.encode(text), device=params.device)
 split_ix = int(len(data) * params.train_val_split)
 train_data = data[:split_ix]
 val_data = data[split_ix:]
