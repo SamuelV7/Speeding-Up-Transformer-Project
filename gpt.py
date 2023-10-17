@@ -3,8 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import params
 import lang_tokenizer as lt
-
-
+    
 class MultiHeadAttention(nn.Module):
     def __init__(self, head_size, num_heads) -> None:
         super().__init__()
@@ -15,8 +14,8 @@ class MultiHeadAttention(nn.Module):
         self.dropout_attention = nn.Dropout(params.dropout)
         self.residual_dropout = nn.Dropout(params.dropout)
         self.flash_attention = hasattr(torch.nn.functional, 'scaled_dot_product_attention')
-        if not self.flash_attention:
-            print("Using custom attention")
+        # if not self.flash_attention:
+        #     print("Using custom attention")
         self.register_buffer('mask', torch.tril(torch.ones(params.block_size, params.block_size)).view(1, 1, params.block_size, params.block_size))
     
     def forward(self, x):
@@ -28,19 +27,18 @@ class MultiHeadAttention(nn.Module):
         q, k, v = map(div_reshape, (q, k, v))
         # flash attention
         # this will make it faster
-        if self.flash_attention:
-            out = F.scaled_dot_product_attention(q, k, v, dropout_p=dropout, attn_mask=None, is_causal=True)
-        else:
+        # if self.flash_attention:
+        #     out = F.scaled_dot_product_attention(q, k, v, dropout_p=dropout, attn_mask=None, is_causal=True)
+        # else:
             # manual attention
-            attention = (q @ k.transpose(-2, -1)) * k.size(-1) ** -0.5
-            attention = attention.masked_fill(self.mask[:, :, :T, :T] == 0, float('-inf'))
-            attention = torch.softmax(attention, dim=-1)
-            attention = self.dropout_attention(attention)
-            out = attention @ v
+        attention = (q @ k.transpose(-2, -1)) * k.size(-1) ** -0.5
+        attention = attention.masked_fill(self.mask[:, :, :T, :T] == 0, float('-inf'))
+        attention = torch.softmax(attention, dim=-1)
+        attention = self.dropout_attention(attention)
+        out = attention @ v
         out = out.transpose(1, 2).contiguous().view(B, T, C)
         out = self.residual_dropout(self.fc(out))
         return out
-
 
 class FeedForward(nn.Module):
     def __init__(self, n_embeddings) -> None:

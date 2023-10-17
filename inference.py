@@ -6,7 +6,7 @@ import lang_tokenizer as lt
 
 # load the model - classic model without mixed precision and flash attention
 model = gpt.Shakespeare()
-model.load_state_dict(torch.load("model_4999.pt"))
+model.load_state_dict(torch.load("model_flash_attention4999.pt"))
 model.eval()
 model.to(params.device)
 
