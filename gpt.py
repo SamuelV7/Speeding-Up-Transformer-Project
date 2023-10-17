@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import params
-import math
 import lang_tokenizer as lt
 
 class Head(nn.Module):
@@ -14,34 +14,59 @@ class Head(nn.Module):
         self.register_buffer("mask", torch.tril(torch.ones(params.block_size,  params.block_size)))
         self.dropout = nn.Dropout(params.dropout)
 
-    def forward(self, x):
-        B, T, C = x.shape
-        k = self.kl(x)
-        q = self.ql(x)
-        
-        weights = q @ k.transpose(-1, -2) * k.shape[-1]**-0.5
-        weights = weights.masked_fill(self.mask[:T, :T] == 0, float('-inf'))
-        weights = torch.nn.functional.softmax(weights, dim=-1)
-        weights = self.dropout(weights)
-        v = self.vl(x)
-        out = weights @ v
-        return out
+    def forward(self, x, flash_attention_disabled=False):
+        # use flash attentions 
+        curr_dropout = self.dropout if self.training else 0
+        self.flash_attention = F.scaled_dot_product_attention(self.ql, self.kl, self.vl, dropout=curr_dropout, attn_mask= None, is_causal=True)
+        if flash_attention_disabled:
+            B, T, C = x.shape
+            k = self.kl(x)
+            q = self.ql(x)
+            
+            weights = q @ k.transpose(-1, -2) * k.shape[-1]**-0.5
+            weights = weights.masked_fill(self.mask[:T, :T] == 0, float('-inf'))
+            weights = torch.nn.functional.softmax(weights, dim=-1)
+            weights = self.dropout(weights)
+            v = self.vl(x)
+            out = weights @ v
+            return out
+        else:
+            return self.flash_attention(x)
     
 class MultiHeadAttention(nn.Module):
     def __init__(self, head_size, num_heads) -> None:
         super().__init__()
+        self.expand = nn.Linear(params.n_embeddings, 3* params.n_embeddings, bias=False)
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
         self.fc = nn.Linear(head_size * num_heads, params.n_embeddings)
         self.dropout = nn.Dropout(params.dropout)
     
     def forward(self, x):
-        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        B, T, C = x.shape
+        dropout = params.dropout if self.training else 0.0
+        q, k, v = self.expand(x).split(params.n_embeddings, dim=-1)
+        div_reshape = lambda x : x.view(B, T, params.nhead, C // params.nhead).transpose(1, 2)
+        q, k, v = map(div_reshape, (q, k, v))
+        # flash attention
+        # this will make it faster
+        out = F.scaled_dot_product_attention(q, k, v, dropout_p=dropout, attn_mask=None, is_causal=True)
+        out = out.transpose(1, 2).contiguous().view(B, T, C)
+        return out
+
+class FastAttentionMH(nn.Module):
+    def __init__(self, head_size, num_heads) -> None:
+        super().__init__()
+        self.fa = F.scaled_dot_product_attention()
+
+
+    def forward(self, x):
+        out = torch.cat([h(x, flash_attention_disabled=True) for h in self.heads], dim=-1)
         # print("Attention shape1 ", out.shape)
         out = self.fc(out)
         out = self.dropout(out)
         # print("Attention shape ", out.shape)
         return out
-        
+
 class FeedForward(nn.Module):
     def __init__(self, n_embeddings) -> None:
         super().__init__()
