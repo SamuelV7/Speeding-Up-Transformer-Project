@@ -3,11 +3,44 @@ import torch.nn as nn
 import torch.nn.functional as F
 import params
 import lang_tokenizer as lt
+<<<<<<< HEAD
+=======
+
+class Head(nn.Module):
+    def __init__(self, head_size) -> None:
+        super().__init__()
+        # query, key, value
+        self.ql = nn.Linear(params.n_embeddings, head_size, bias=False)
+        self.kl = nn.Linear(params.n_embeddings, head_size, bias=False)
+        self.vl = nn.Linear(params.n_embeddings, head_size, bias=False)
+        self.register_buffer("mask", torch.tril(torch.ones(params.block_size,  params.block_size)))
+        self.dropout = nn.Dropout(params.dropout)
+
+    def forward(self, x, flash_attention_disabled=False):
+        # use flash attentions 
+        curr_dropout = self.dropout if self.training else 0
+        self.flash_attention = F.scaled_dot_product_attention(self.ql, self.kl, self.vl, dropout=curr_dropout, attn_mask= None, is_causal=True)
+        if flash_attention_disabled:
+            B, T, C = x.shape
+            k = self.kl(x)
+            q = self.ql(x)
+            
+            weights = q @ k.transpose(-1, -2) * k.shape[-1]**-0.5
+            weights = weights.masked_fill(self.mask[:T, :T] == 0, float('-inf'))
+            weights = torch.nn.functional.softmax(weights, dim=-1)
+            weights = self.dropout(weights)
+            v = self.vl(x)
+            out = weights @ v
+            return out
+        else:
+            return self.flash_attention(x)
+>>>>>>> 6cabd16 (added mixed precision training)
     
 class MultiHeadAttention(nn.Module):
     def __init__(self, head_size, num_heads) -> None:
         super().__init__()
         self.expand = nn.Linear(params.n_embeddings, 3* params.n_embeddings, bias=False)
+<<<<<<< HEAD
         # self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
         self.fc = nn.Linear(params.n_embeddings, params.n_embeddings)
 
@@ -20,6 +53,13 @@ class MultiHeadAttention(nn.Module):
     
     def forward(self, x):
         # batch size, sequence length, embedding dimensions
+=======
+        self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
+        self.fc = nn.Linear(head_size * num_heads, params.n_embeddings)
+        self.dropout = nn.Dropout(params.dropout)
+    
+    def forward(self, x):
+>>>>>>> 6cabd16 (added mixed precision training)
         B, T, C = x.shape
         dropout = params.dropout if self.training else 0.0
         q, k, v = self.expand(x).split(params.n_embeddings, dim=-1)
@@ -27,6 +67,7 @@ class MultiHeadAttention(nn.Module):
         q, k, v = map(div_reshape, (q, k, v))
         # flash attention
         # this will make it faster
+<<<<<<< HEAD
         # if self.flash_attention:
         #     out = F.scaled_dot_product_attention(q, k, v, dropout_p=dropout, attn_mask=None, is_causal=True)
         # else:
@@ -38,6 +79,24 @@ class MultiHeadAttention(nn.Module):
         out = attention @ v
         out = out.transpose(1, 2).contiguous().view(B, T, C)
         out = self.residual_dropout(self.fc(out))
+=======
+        out = F.scaled_dot_product_attention(q, k, v, dropout_p=dropout, attn_mask=None, is_causal=True)
+        out = out.transpose(1, 2).contiguous().view(B, T, C)
+        return out
+
+class FastAttentionMH(nn.Module):
+    def __init__(self, head_size, num_heads) -> None:
+        super().__init__()
+        self.fa = F.scaled_dot_product_attention()
+
+
+    def forward(self, x):
+        out = torch.cat([h(x, flash_attention_disabled=True) for h in self.heads], dim=-1)
+        # print("Attention shape1 ", out.shape)
+        out = self.fc(out)
+        out = self.dropout(out)
+        # print("Attention shape ", out.shape)
+>>>>>>> 6cabd16 (added mixed precision training)
         return out
 
 class FeedForward(nn.Module):
