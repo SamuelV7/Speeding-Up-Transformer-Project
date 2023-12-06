@@ -34,32 +34,16 @@ class Head(nn.Module):
             return out
         else:
             return self.flash_attention(x)
->>>>>>> 6cabd16 (added mixed precision training)
     
 class MultiHeadAttention(nn.Module):
     def __init__(self, head_size, num_heads) -> None:
         super().__init__()
         self.expand = nn.Linear(params.n_embeddings, 3* params.n_embeddings, bias=False)
-<<<<<<< HEAD
-        # self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
-        self.fc = nn.Linear(params.n_embeddings, params.n_embeddings)
-
-        self.dropout_attention = nn.Dropout(params.dropout)
-        self.residual_dropout = nn.Dropout(params.dropout)
-        self.flash_attention = hasattr(torch.nn.functional, 'scaled_dot_product_attention')
-        # if not self.flash_attention:
-        #     print("Using custom attention")
-        self.register_buffer('mask', torch.tril(torch.ones(params.block_size, params.block_size)).view(1, 1, params.block_size, params.block_size))
-    
-    def forward(self, x):
-        # batch size, sequence length, embedding dimensions
-=======
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
         self.fc = nn.Linear(head_size * num_heads, params.n_embeddings)
         self.dropout = nn.Dropout(params.dropout)
     
     def forward(self, x):
->>>>>>> 6cabd16 (added mixed precision training)
         B, T, C = x.shape
         dropout = params.dropout if self.training else 0.0
         q, k, v = self.expand(x).split(params.n_embeddings, dim=-1)
@@ -67,19 +51,6 @@ class MultiHeadAttention(nn.Module):
         q, k, v = map(div_reshape, (q, k, v))
         # flash attention
         # this will make it faster
-<<<<<<< HEAD
-        # if self.flash_attention:
-        #     out = F.scaled_dot_product_attention(q, k, v, dropout_p=dropout, attn_mask=None, is_causal=True)
-        # else:
-            # manual attention
-        attention = (q @ k.transpose(-2, -1)) * k.size(-1) ** -0.5
-        attention = attention.masked_fill(self.mask[:, :, :T, :T] == 0, float('-inf'))
-        attention = torch.softmax(attention, dim=-1)
-        attention = self.dropout_attention(attention)
-        out = attention @ v
-        out = out.transpose(1, 2).contiguous().view(B, T, C)
-        out = self.residual_dropout(self.fc(out))
-=======
         out = F.scaled_dot_product_attention(q, k, v, dropout_p=dropout, attn_mask=None, is_causal=True)
         out = out.transpose(1, 2).contiguous().view(B, T, C)
         return out

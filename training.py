@@ -43,11 +43,22 @@ print(sum(p.numel() for p in model.parameters())/1e6, "M")
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=params.learning_rate)
 scaler = torch.cuda.amp.GradScaler()
+scaler = torch.cuda.amp.GradScaler()
 
 for i in range(params.max_epochs):
     inputbatch, targetbatch = get_batch('train')
     # logits, loss = model(inputbatch, targetbatch)
+    # logits, loss = model(inputbatch, targetbatch)
     optimizer.zero_grad()
+    
+    with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
+        logits, loss = model(inputbatch, targetbatch)
+
+    scaler.scale(loss).backward()
+    scaler.step(optimizer)
+    scaler.update()
+    # loss.backward()
+    # optimizer.step()
     
     with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
         logits, loss = model(inputbatch, targetbatch)

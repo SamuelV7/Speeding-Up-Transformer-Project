@@ -17,26 +17,15 @@
         "device": "cuda"
     },
     "inference time": {
-<<<<<<< HEAD
         "time": "44639.1796875"
-=======
-        "time": "27911.763671875"
->>>>>>> a3123ed (initial results)
     },
     "model params": {
-        "params": "9011777"
+        "params": "7242305"
     },
     "fp32 ram usage": {
-<<<<<<< HEAD
         "ram": "47.461376"
     },
     "loss test": {
         "val": "tensor(1.5760)"
-=======
-        "ram": "57.684992"
-    },
-    "loss test": {
-        "val": "tensor(1.6083)"
->>>>>>> a3123ed (initial results)
     }
 }

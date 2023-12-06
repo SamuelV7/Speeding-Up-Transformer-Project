@@ -7,11 +7,7 @@ import json
 model_name = "model_FA_4999.pt"
 # load model for accuracy test
 model = gpt.Shakespeare()
-<<<<<<< HEAD
-model.load_state_dict(torch.load(model_name, map_location=params.device))
-=======
 model.load_state_dict(torch.load("model_flash_attention4999.pt", map_location=params.device))
->>>>>>> a3123ed (initial results)
 model.eval()
 model.to(params.device)
 
@@ -52,15 +48,13 @@ def loss_estimation():
     out['val'] = losses.mean()
     return out
 
-with torch.autograd.profiler.profile(use_cuda=True) as prof:
-    loss = loss_estimation()
-
-prof.export_chrome_trace(f"trace_{model_name}.json")
-profiler_output = prof.key_averages()
-print(profiler_output.table(sort_by="cuda_time_total"))
+# with torch.autograd.profiler.profile(use_cuda=True) as prof:
+#     loss = loss_estimation()
+#     profiler_output = prof.key_averages()
+# print(profiler_output.table(sort_by="cuda_time_total"))
 
 # save the accuracy as JSON
-# loss = loss_estimation()
+loss = loss_estimation()
 json_data = {}
 with open("accuracy.json", "w") as f:
     # model type
