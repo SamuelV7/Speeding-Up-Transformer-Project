@@ -1,6 +1,6 @@
 {
     "model type": {
-        "type": "classic"
+        "type": "flash attention"
     },
     "h-params": {
         "batch_size": 64,
@@ -16,13 +16,16 @@
         "train_val_split": 0.9,
         "device": "cuda"
     },
+    "inference time": {
+        "time": "27911.763671875"
+    },
     "model params": {
-        "params": "7242305"
+        "params": "9011777"
     },
     "fp32 ram usage": {
-        "ram": "50.607104"
+        "ram": "57.684992"
     },
     "loss test": {
-        "val": "tensor(1.5623)"
+        "val": "tensor(1.6083)"
     }
 }
