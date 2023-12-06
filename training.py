@@ -71,7 +71,4 @@ for i in range(params.max_epochs):
     if i % params.eval_interval == 0 or i == params.max_epochs - 1:
         losses = estimate_loss()
         print(f"epoch: {i}, train loss: {losses['train']}, val loss: {losses['val']}")
-<<<<<<< HEAD
-        torch.save(model.state_dict(), f"model_FA_{i}.pt")
-=======
-
+        torch.save(model.state_dict(), f"model_FA_MixedPrecision_{i}.pt")
