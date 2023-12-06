@@ -1,47 +1,47 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import params
-import math
 import lang_tokenizer as lt
 
-class Head(nn.Module):
-    def __init__(self, head_size) -> None:
-        super().__init__()
-        # query, key, value
-        self.ql = nn.Linear(params.n_embeddings, head_size, bias=False)
-        self.kl = nn.Linear(params.n_embeddings, head_size, bias=False)
-        self.vl = nn.Linear(params.n_embeddings, head_size, bias=False)
-        self.register_buffer("mask", torch.tril(torch.ones(params.block_size,  params.block_size)))
-        self.dropout = nn.Dropout(params.dropout)
 
-    def forward(self, x):
-        B, T, C = x.shape
-        k = self.kl(x)
-        q = self.ql(x)
-        
-        weights = q @ k.transpose(-1, -2) * k.shape[-1]**-0.5
-        weights = weights.masked_fill(self.mask[:T, :T] == 0, float('-inf'))
-        weights = torch.nn.functional.softmax(weights, dim=-1)
-        weights = self.dropout(weights)
-        v = self.vl(x)
-        out = weights @ v
-        return out
-    
 class MultiHeadAttention(nn.Module):
     def __init__(self, head_size, num_heads) -> None:
         super().__init__()
-        self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
-        self.fc = nn.Linear(head_size * num_heads, params.n_embeddings)
-        self.dropout = nn.Dropout(params.dropout)
+        self.expand = nn.Linear(params.n_embeddings, 3* params.n_embeddings, bias=False)
+        # self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
+        self.fc = nn.Linear(params.n_embeddings, params.n_embeddings)
+
+        self.dropout_attention = nn.Dropout(params.dropout)
+        self.residual_dropout = nn.Dropout(params.dropout)
+        self.flash_attention = hasattr(torch.nn.functional, 'scaled_dot_product_attention')
+        # if not self.flash_attention:
+        #     print("Using custom attention")
+        self.register_buffer('mask', torch.tril(torch.ones(params.block_size, params.block_size)).view(1, 1, params.block_size, params.block_size))
     
     def forward(self, x):
-        out = torch.cat([h(x) for h in self.heads], dim=-1)
-        # print("Attention shape1 ", out.shape)
-        out = self.fc(out)
-        out = self.dropout(out)
-        # print("Attention shape ", out.shape)
+        # batch size, sequence length, embedding dimensions
+        B, T, C = x.shape
+        dropout = params.dropout if self.training else 0.0
+        q, k, v = self.expand(x).split(params.n_embeddings, dim=-1)
+        div_reshape = lambda x : x.view(B, T, params.nhead, C // params.nhead).transpose(1, 2)
+        q, k, v = map(div_reshape, (q, k, v))
+        # flash attention
+        # this will make it faster
+        # if self.flash_attention:
+        #     out = F.scaled_dot_product_attention(q, k, v, dropout_p=dropout, attn_mask=None, is_causal=True)
+        # else:
+            # manual attention
+        attention = (q @ k.transpose(-2, -1)) * k.size(-1) ** -0.5
+        attention = attention.masked_fill(self.mask[:, :, :T, :T] == 0, float('-inf'))
+        attention = torch.softmax(attention, dim=-1)
+        attention = self.dropout_attention(attention)
+        out = attention @ v
+        out = out.transpose(1, 2).contiguous().view(B, T, C)
+        out = self.residual_dropout(self.fc(out))
         return out
-        
+
+
 class FeedForward(nn.Module):
     def __init__(self, n_embeddings) -> None:
         super().__init__()
@@ -108,18 +108,6 @@ class Shakespeare(nn.Module):
         
         return logits, loss
     
-    # def generate(self, x, max_output=100, temperature=1.0):
-    #     for i in range(max_output):
-    #         # crop till context
-    #         x_cur = x[:, -params.block_size:]
-    #         print("x shape crop: ", x.shape)
-    #         logits, _ = self(x_cur)
-    #         logits = logits[:, -1, :] 
-    #         next_token = torch.multinomial(torch.softmax(logits, dim=-1), num_samples=1)
-    #         x = torch.cat((x, next_token), dim=-1)
-    #         print("next token: ", next_token)
-    #         # print("next token: ", lt.decode(next_token))
-    #     return x
     def generate(self, idx, max_new_tokens):
         # idx is (B, T) array of indices in the current context
         for _ in range(max_new_tokens):
@@ -136,5 +124,3 @@ class Shakespeare(nn.Module):
             # append sampled index to the running sequence
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
         return idx
-
-
