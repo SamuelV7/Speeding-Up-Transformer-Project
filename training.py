@@ -63,5 +63,4 @@ for i in range(params.max_epochs):
 <<<<<<< HEAD
         torch.save(model.state_dict(), f"model_FA_{i}.pt")
 =======
-        torch.save(model.state_dict(), f"model_flash_attention{i}.pt")
->>>>>>> 6cabd16 (added mixed precision training)
+

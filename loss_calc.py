@@ -7,7 +7,11 @@ import json
 model_name = "model_FA_4999.pt"
 # load model for accuracy test
 model = gpt.Shakespeare()
+<<<<<<< HEAD
 model.load_state_dict(torch.load(model_name, map_location=params.device))
+=======
+model.load_state_dict(torch.load("model_flash_attention4999.pt", map_location=params.device))
+>>>>>>> a3123ed (initial results)
 model.eval()
 model.to(params.device)
 
