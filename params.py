@@ -27,3 +27,4 @@ eval_interval = 500
 vocab_size = lt.the_vocab_size
 train_val_split = 0.9
 device = set_device()
+print("Device is ", device)
