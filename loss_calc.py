@@ -34,46 +34,61 @@ def get_batch(split):
 def loss_estimation():
     out = {}
     losses = torch.zeros(params.eval_interval)
+    t1 = torch.cuda.Event(enable_timing=True)
+    t2 = torch.cuda.Event(enable_timing=True)
+    t1.record()
     for k in range(params.eval_interval):
         X, Y = get_batch('val')
         logits, loss = model(X, Y)
         losses[k] = loss.item()
+    t2.record()
+    torch.cuda.synchronize()
+    out['time'] = t1.elapsed_time(t2)
     out['val'] = losses.mean()
     return out
 
-# save the accuracy as JSON
-loss = loss_estimation()
-json_data = {}
-with open("accuracy.json", "w") as f:
-    # model type
-    json_data['model type'] = {
-        "type": "classic"
-    }
-    # add current params to the JSON
-    json_data['h-params'] = {
-        "batch_size": params.batch_size,
-        "block_size": params.block_size,
-        "dropout": params.dropout,
-        "n_embeddings": params.n_embeddings,
-        "nhead": params.nhead,
-        "num_decoder_layers": params.num_decoder_layers,
-        "learning_rate": params.learning_rate,
-        "max_epochs": params.max_epochs,
-        "eval_interval": params.eval_interval,
-        "vocab_size": params.vocab_size,
-        "train_val_split": params.train_val_split,
-        "device": str(params.device)
-    }
-    # model params
-    json_data['model params'] = {
-        "params": str(sum(p.numel() for p in model.parameters()))
-    }
-    # fp32 ram usage
-    json_data['fp32 ram usage'] = {
-        "ram": str(torch.cuda.memory_allocated(params.device)/1e6)
-    }
-    json_data['loss test'] = {
-        "val": str(loss['val'])
-    }
-    json.dump(json_data, f)
+with torch.autograd.profiler.profile(use_cuda=True) as prof:
+    loss = loss_estimation()
+    profiler_output = prof.key_averages()
+print(profiler_output.table(sort_by="cuda_time_total"))
+
+# # save the accuracy as JSON
+# # loss = loss_estimation()
+# json_data = {}
+# with open("accuracy.json", "w") as f:
+#     # model type
+#     json_data['model type'] = {
+#         "type": "flash attention"
+#     }
+#     # add current params to the JSON
+#     json_data['h-params'] = {
+#         "batch_size": params.batch_size,
+#         "block_size": params.block_size,
+#         "dropout": params.dropout,
+#         "n_embeddings": params.n_embeddings,
+#         "nhead": params.nhead,
+#         "num_decoder_layers": params.num_decoder_layers,
+#         "learning_rate": params.learning_rate,
+#         "max_epochs": params.max_epochs,
+#         "eval_interval": params.eval_interval,
+#         "vocab_size": params.vocab_size,
+#         "train_val_split": params.train_val_split,
+#         "device": str(params.device)
+#     }
+#     #inference time
+#     json_data['inference time'] = {
+#         "time": str(loss['time'])
+#     }
+#     # model params
+#     json_data['model params'] = {
+#         "params": str(sum(p.numel() for p in model.parameters()))
+#     }
+#     # fp32 ram usage
+#     json_data['fp32 ram usage'] = {
+#         "ram": str(torch.cuda.memory_allocated(params.device)/1e6)
+#     }
+#     json_data['loss test'] = {
+#         "val": str(loss['val'])
+#     }
+#     json.dump(json_data, f)
 
