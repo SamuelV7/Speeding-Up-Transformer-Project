@@ -4,10 +4,10 @@ import params
 import lang_tokenizer as lt
 import json
 
-model_name = "model_FA_4999.pt"
+model_name = "model_FA_MixedPrecision_4999.pt"
 # load model for accuracy test
 model = gpt.Shakespeare()
-model.load_state_dict(torch.load("model_flash_attention4999.pt", map_location=params.device))
+model.load_state_dict(torch.load("model_FA_MixedPrecision_4999.pt", map_location=params.device))
 model.eval()
 model.to(params.device)
 
@@ -59,7 +59,7 @@ json_data = {}
 with open("accuracy.json", "w") as f:
     # model type
     json_data['model type'] = {
-        "type": "flash attention"
+        "type": "flash-attention Mixed Precision"
     }
     # add current params to the JSON
     json_data['h-params'] = {
