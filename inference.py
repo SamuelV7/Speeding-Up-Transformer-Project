@@ -1,4 +1,4 @@
-import gpt
+import mixed_flash_gpt
 import params
 import torch
 import lang_tokenizer as lt

@@ -1,5 +1,5 @@
 from datetime import time
-import gpt
+import mixed_flash_gpt as gpt
 import params
 import torch
 import lang_tokenizer as lt
