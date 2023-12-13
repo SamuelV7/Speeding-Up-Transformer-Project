@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import params
 import lang_tokenizer as lt
 
-
 class MultiHeadAttention(nn.Module):
     def __init__(self, head_size, num_heads) -> None:
         super().__init__()
@@ -40,8 +39,8 @@ class MultiHeadAttention(nn.Module):
         out = out.transpose(1, 2).contiguous().view(B, T, C)
         out = self.residual_dropout(self.fc(out))
         return out
-
-
+    
+    
 class FeedForward(nn.Module):
     def __init__(self, n_embeddings) -> None:
         super().__init__()
