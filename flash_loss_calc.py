@@ -1,10 +1,10 @@
 import torch
-import gpt
+import flash_gpt as gpt
 import params
 import lang_tokenizer as lt
 import json
 
-model_name = "model_FA_MixedPrecision_4999.pt"
+model_name = "model_FA_4999.pt"
 # load model for accuracy test
 model = gpt.Shakespeare()
 model.load_state_dict(torch.load(model_name, map_location=params.device))
@@ -61,7 +61,7 @@ json_data = {}
 with open("accuracy.json", "w") as f:
     # model type
     json_data['model type'] = {
-        "type": "flash attention Mixed Precision"
+        "type": "flash attention"
     }
     # add current params to the JSON
     json_data['h-params'] = {
@@ -94,4 +94,3 @@ with open("accuracy.json", "w") as f:
         "val": str(loss['val'])
     }
     json.dump(json_data, f)
-
