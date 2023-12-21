@@ -17,21 +17,17 @@ class MultiHeadAttention(nn.Module):
         self.flash_attention = hasattr(torch.nn.functional, 'scaled_dot_product_attention')
         # if not self.flash_attention:
         #     print("Using custom attention")
-        self.register_buffer('mask', torch.tril(torch.ones(params.block_size, params.block_size)).view(1, 1, params.block_size, params.block_size))
+        self.register_buffer('mask', torch.tril(torch.ones(params.block_size, 
+                            params.block_size)).view(1, 1, params.block_size, params.block_size))
     
     def forward(self, x):
         # batch size, sequence length, embedding dimensions
         B, T, C = x.shape
         dropout = params.dropout if self.training else 0.0
         q, k, v = self.expand(x).split(params.n_embeddings, dim=-1)
-        div_reshape = lambda x : x.view(B, T, params.nhead, C // params.nhead).transpose(1, 2)
+        div_reshape = lambda x : x.view(B, T, params.nhead, 
+                                C // params.nhead).transpose(1, 2)
         q, k, v = map(div_reshape, (q, k, v))
-        # flash attention
-        # this will make it faster
-        # if self.flash_attention:
-        #     out = F.scaled_dot_product_attention(q, k, v, dropout_p=dropout, attn_mask=None, is_causal=True)
-        # else:
-            # manual attention
         attention = (q @ k.transpose(-2, -1)) * k.size(-1) ** -0.5
         attention = attention.masked_fill(self.mask[:, :, :T, :T] == 0, float('-inf'))
         attention = torch.softmax(attention, dim=-1)
@@ -123,4 +119,4 @@ class Shakespeare(nn.Module):
             idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
             # append sampled index to the running sequence
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
-        return idx
+        return idx, loss

@@ -1,4 +1,4 @@
-import gpt
+import base_gpt
 import params
 import torch
 import lang_tokenizer as lt
@@ -37,6 +37,18 @@ def estimate_loss():
     model.train()
     return out
 
+def estimate_perplexity():
+    out = {}
+    model.eval()
+    for split in ['train', 'val']:
+        losses = torch.zeros(params.eval_interval)
+        for k in range(params.eval_interval):
+            X, Y = get_batch(split)
+            logits, loss = model(X, Y)
+            losses[k] = loss.item()
+        out[split] = torch.exp(torch.tensor(losses.mean()))
+    model.train()
+    return out
 # calculate params
 print(sum(p.numel() for p in model.parameters())/1e6, "M")
 
