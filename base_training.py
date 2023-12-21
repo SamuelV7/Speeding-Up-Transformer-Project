@@ -1,4 +1,4 @@
-import base_gpt
+import base_gpt as gpt
 import params
 import torch
 import lang_tokenizer as lt
