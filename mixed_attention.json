@@ -1,0 +1,31 @@
+{
+    "model type": {
+        "type": "flash-attention Mixed Precision"
+    },
+    "h-params": {
+        "batch_size": 64,
+        "block_size": 256,
+        "dropout": 0.3,
+        "n_embeddings": 384,
+        "nhead": 4,
+        "num_decoder_layers": 4,
+        "learning_rate": 0.0001,
+        "max_epochs": 5000,
+        "eval_interval": 500,
+        "vocab_size": 65,
+        "train_val_split": 0.9,
+        "device": "cuda"
+    },
+    "inference time": {
+        "time": "27780.3046875"
+    },
+    "model params": {
+        "params": "7242305"
+    },
+    "fp32 ram usage": {
+        "ram": "47.461376"
+    },
+    "loss test": {
+        "val": "tensor(1.5198)"
+    }
+}

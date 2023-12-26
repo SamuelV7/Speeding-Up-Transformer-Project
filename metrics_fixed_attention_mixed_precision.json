@@ -1,0 +1,33 @@
+{
+    "model type": {
+        "type": "fixed_attention_mixed_precision"
+    },
+    "h-params": {
+        "batch_size": 64,
+        "block_size": 256,
+        "dropout": 0.3,
+        "n_embeddings": 384,
+        "nhead": 4,
+        "num_decoder_layers": 4,
+        "learning_rate": 0.0001,
+        "max_epochs": 5000,
+        "eval_interval": 500,
+        "vocab_size": 65,
+        "train_val_split": 0.9,
+        "device": "cuda"
+    },
+    "validation time ": {
+        "time": "45788.63671875"
+    },
+    "model params": {
+        "params": "7.242305 M"
+    },
+    "fp32 ram usage": {
+        "ram": "48.444416"
+    },
+    "loss": {
+        "val": "tensor(1.5195)"
+    },
+    "perplexity test": "tensor(4.5643)",
+    "date": "23/12/2023 23:27:48"
+}

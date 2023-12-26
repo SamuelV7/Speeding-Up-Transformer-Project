@@ -37,6 +37,7 @@ def estimate_loss():
     model.train()
     return out
 
+@torch.no_grad()
 def estimate_perplexity():
     out = {}
     model.eval()
@@ -49,6 +50,7 @@ def estimate_perplexity():
         out[split] = torch.exp(torch.tensor(losses.mean()))
     model.train()
     return out
+
 # calculate params
 print(sum(p.numel() for p in model.parameters())/1e6, "M")
 

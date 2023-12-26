@@ -60,14 +60,14 @@ for i in range(params.max_epochs):
     # loss.backward()
     # optimizer.step()
     
-    with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
-        logits, loss = model(inputbatch, targetbatch)
+    # with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
+    #     logits, loss = model(inputbatch, targetbatch)
 
-    scaler.scale(loss).backward()
-    scaler.step(optimizer)
-    scaler.update()
-    # loss.backward()
-    # optimizer.step()
+    # scaler.scale(loss).backward()
+    # scaler.step(optimizer)
+    # scaler.update()
+    # # loss.backward()
+    # # optimizer.step()
     if i % params.eval_interval == 0 or i == params.max_epochs - 1:
         losses = estimate_loss()
         print(f"epoch: {i}, train loss: {losses['train']}, val loss: {losses['val']}")

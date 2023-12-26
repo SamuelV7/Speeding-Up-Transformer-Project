@@ -4,10 +4,10 @@ import params
 import lang_tokenizer as lt
 import json
 
-model_name = "model_FA_MixedPrecision_4999.pt"
+model_name = "models\model_FA_MixedPrecision_4999.pt"
 # load model for accuracy test
 model = gpt.Shakespeare()
-model.load_state_dict(torch.load("model_FA_MixedPrecision_4999.pt", map_location=params.device))
+model.load_state_dict(torch.load(model_name, map_location=params.device))
 model.eval()
 model.to(params.device)
 
@@ -48,15 +48,15 @@ def loss_estimation():
     out['val'] = losses.mean()
     return out
 
-# with torch.autograd.profiler.profile(use_cuda=True) as prof:
-#     loss = loss_estimation()
-#     profiler_output = prof.key_averages()
-# print(profiler_output.table(sort_by="cuda_time_total"))
+with torch.autograd.profiler.profile(use_cuda=True) as prof:
+    loss = loss_estimation()
+profiler_output = prof.key_averages()
+print(profiler_output.table(sort_by="cuda_time_total"))
 
 # save the accuracy as JSON
 loss = loss_estimation()
 json_data = {}
-with open("accuracy.json", "w") as f:
+with open("mixed_attention.json", "w") as f:
     # model type
     json_data['model type'] = {
         "type": "flash-attention Mixed Precision"
@@ -92,4 +92,3 @@ with open("accuracy.json", "w") as f:
         "val": str(loss['val'])
     }
     json.dump(json_data, f)
-

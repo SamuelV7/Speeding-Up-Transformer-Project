@@ -1,5 +1,6 @@
 import lang_tokenizer as lt
 import torch
+
 def set_device():
     if torch.cuda.is_available():
         device = torch.device('cuda')
@@ -22,9 +23,24 @@ n_embeddings = 384 # also called n_embd
 nhead = 4
 num_decoder_layers = 4
 learning_rate = 1e-4
-max_epochs = 5000
-eval_interval = 500
+max_epochs = 5000 # 5000
+eval_interval = 500 # 500 change it back to 500
 vocab_size = lt.the_vocab_size
 train_val_split = 0.9
 device = set_device()
 print("Device is ", device)
+
+# hyperparams of the network v2
+# batch_size = 64
+# block_size = 425 # this is max_len
+# dropout = 0.3
+# n_embeddings = 384 # also called n_embd
+# nhead = 6
+# num_decoder_layers = 5
+# learning_rate = 1e-4
+# max_epochs = 5000
+# eval_interval = 500
+# vocab_size = lt.the_vocab_size
+# train_val_split = 0.9
+# device = set_device()
+# print("Device is ", device)

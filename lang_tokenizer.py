@@ -17,4 +17,4 @@ def tokenizer(text):
 
 encode, decode, the_vocab_size = custom_tokenizer()
 # shakespear vocab size
-print(the_vocab_size)
+print(f"Vocab Size:{the_vocab_size}")

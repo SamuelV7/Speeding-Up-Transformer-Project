@@ -1,4 +1,7 @@
 models/
+models_new/
+runs/
+logs/
 # ignore model files
 *.pth
 *.pt

@@ -1,5 +1,5 @@
 import torch
-import gpt
+import base_gpt as gpt
 import params
 import lang_tokenizer as lt
 import json
